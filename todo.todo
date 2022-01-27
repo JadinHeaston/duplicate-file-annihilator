@@ -1,0 +1,6 @@
+☐ Rework arguments
+     Steal work from Sync Application (https://github.com/JadinHeaston/sync-application)
+☐ Create deleting file function.
+     Determine which file should be deleted. Is random good enough?
+☐ Allow for other hashing function(s)
+     MD5 is probably the best to use, but having the option for something like SHA-512 would be nice.
