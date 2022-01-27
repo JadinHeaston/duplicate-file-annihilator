@@ -37,13 +37,31 @@ thread_pool hashingThreadPool(std::thread::hardware_concurrency());
 
 std::ofstream outputFile; //Hold potential future file handle if verbose debugging is enabled.
 std::wstring outputFilePath = L"";
-std::wstring outputFileName = L"debug.txt";
+std::wstring outputFileName = L"debug.log";
 int outputFileCount = 1;
 
 //Counters
 size_t deletedFileCount = 0;
 size_t duplicateFileCount = 0;
 size_t uniqueFileCount = 0;
+
+
+//FUNCTION PROTOTYPES
+void assignHashTasks(std::vector<std::wstring>& givenDB, std::wstring givenStartPath);
+std::wstring charToWString(char* givenCharArray);
+std::string convertMD5ToHex(unsigned char* givenDigest);
+void createDirectoryMapDB(std::vector<std::wstring>& givenVectorDB, std::wstring givenStartPath);
+std::wstring formatFilePath(std::wstring givenString);
+void MThashGivenFile(std::wstring givenFilePath, std::vector<std::wstring>& givenVector, std::wstring lineLocation);
+size_t nthOccurrence(std::wstring& givenString, std::wstring delimitingCharacter, size_t nth);
+void compareHashes(std::vector<std::wstring>& directoryDB, std::vector<std::wstring>& outputDB);
+void removeObject(std::wstring destinationFilePath, bool recursiveRemoval);
+void sortDirectoryDatabases(std::vector<std::wstring>& givenVectorDB);
+std::wstring stringToWString(const std::string& s);
+void writeToOutput(std::wstring textToWrite);
+void writeUnicodeToFile(std::ofstream& outputFile, std::wstring inputWstring);
+
+
 
 int main(int argc, char* argv[])
 {
@@ -65,7 +83,7 @@ int main(int argc, char* argv[])
     //Reading args
     if (argc == 1) //No arguments provided. Notify. Close program.
     {
-        std::cout << "No arguments provided.\nUse the \"-h\" or \"--help\" switch to show the available options.\n(-s and -d are required for operation)" << std::endl;
+        std::cout << "No arguments provided.\nUse the \"-h\" or \"--help\" switch to show the available options.\n(-s is required for operation)" << std::endl;
         system("PAUSE");
         return 0;
     }
@@ -83,7 +101,7 @@ int main(int argc, char* argv[])
         }
         else //No arguments provided. Notify. Close program.
         {
-            std::cout << "Use the \"-h\" or \"--help\" switch to show the available options.\n(-s and -d are required for operation)" << std::endl;
+            std::cout << "Use the \"-h\" or \"--help\" switch to show the available options.\n(-s is required for operation)" << std::endl;
             system("PAUSE");
             return 0;
         }
@@ -122,19 +140,21 @@ int main(int argc, char* argv[])
         outputFilePath = L"";
     }
 
-    outputFile.open(outputFilePath + outputFileName, std::ios::out | std::ios::binary | std::ios::app); //Open the file.
-    if (!outputFile.is_open())
-    {
-        std::wcout << L"Debug file path not usable: " + outputFilePath + outputFileName << std::endl;
-        system("PAUSE");
-        return 0;
-    }
-    outputFile.close();
+    //outputFile.open(outputFilePath + outputFileName, std::ios::out | std::ios::binary | std::ios::app); //Open the file.
+    //if (!outputFile.is_open())
+    //{
+    //    std::wcout << L"Debug file path not usable: " + outputFilePath + outputFileName << std::endl;
+    //    system("PAUSE");
+    //    return 0;
+    //}
+    //outputFile.close();
 
 	//Creating vectors to hold directory maps.
 	std::vector<std::wstring> directoryDB;
     //File action vector
     std::vector<std::wstring> fileOpActions;
+    //Stores hashes and file paths. This is export at the end to the user.
+    std::vector<std::wstring> duplicateFiles;
 
     //MAX_PATH bypass.
     //Also ensuring that path is an absolute path.
@@ -160,10 +180,6 @@ int main(int argc, char* argv[])
     threadPool.wait_for_tasks();
     std::cout << "Sorting finished..." << std::endl; //***
 
-    //Compare files. Determine what files need to be hashed.
-
-
-
     //Start hashing files.
     std::cout << "Beginning hash process. " << directoryDB.size() << " Files to be hashed..." << std::endl; //***
     assignHashTasks(directoryDB, givenDirectoryPath); //Assigning hash tasks
@@ -171,50 +187,52 @@ int main(int argc, char* argv[])
     hashingThreadPool.wait_for_tasks(); //Waiting for hashing to finish.
     std::cout << "Hashing finished!" << std::endl; //***
     std::cout << "Comparing file hashes..." << std::endl; ///***
-    compareHashes(fileOpActionFile, givenDirectoryDB, givenDirectoryPath);
+    compareHashes(directoryDB, duplicateFiles);
     std::cout << "Hash comparison finished!" << std::endl; //***
 
     //If we are deleting files, do so.
+    if (false)//deleteFiles)
+    {
+        std::cout << "Deleting files..." << std::endl;
+        //deleteFiles(duplicateFiles;);
+        std::cout << "Finished deleting files!" << std::endl;
+    }
+    
 
-    //Create 
-
-
-
-
-
-
-
-
-
+    //Output database of matches.
 
 
 
+    std::wstring columnsLine = L"FILE_PATH" + delimitingCharacter + L"MD5_HASH" + newLine;
+    duplicateFiles.push_back(columnsLine);
+    std::rotate(duplicateFiles.rbegin(), duplicateFiles.rbegin() + 1, duplicateFiles.rend());
+    
 
-
-
-    //OUTPUTTING FILES:
-    // 
-    // 
-    // 
     
     //Add headers to directory file.
-    std::wstring columnsLine = L"PATH" + delimitingCharacter + L"FILE_SIZE" + delimitingCharacter + L"MD5_HASH" + delimitingCharacter + newLine;
+    columnsLine = L"PATH" + delimitingCharacter + L"MD5_HASH" + newLine;
+
+    directoryDB.push_back(columnsLine); //Adding header.
     //Rotate all elements to the right two, to allow the header and path information to be at the top/start.
-    std::rotate(directoryDB.rbegin(), directoryDB.rbegin() + 2, directoryDB.rend());
+    std::rotate(directoryDB.rbegin(), directoryDB.rbegin() + 1, directoryDB.rend());
+
 
     //Holds output of hashAction reading, allows for manipulation.
     std::wstring currentReadLine;
 
     //Directory list file.
-    std::wstring firstDirectoryDB = L"directoryList.txt";
+    std::wstring firstDirectoryDB = L"directoryList.log";
     std::ofstream firstFileStream(firstDirectoryDB, std::ios::out | std::ios::binary);
 
     //Creating file operations action file.
     //Contains a list of operations, and paths to do so, of files.
     //Such as "Copy this file here". "delete this file".
-    std::wstring fileOpActionFileCreationPath = L"fileOpActionFile.txt";
+    std::wstring fileOpActionFileCreationPath = L"fileOpActionFile.log";
     std::ofstream fileOpActionFile(fileOpActionFileCreationPath, std::ios::out | std::ios::binary);
 
+    //Final Output of duplicate files.
+    std::wstring duplicateHandle = L"DUPLICATES.txt";
+    std::ofstream duplicateFileStream(duplicateHandle, std::ios::out | std::ios::binary);
 
     for (int testIter = 0; testIter < directoryDB.size(); ++testIter)
     {
@@ -227,12 +245,16 @@ int main(int argc, char* argv[])
         currentReadLine = fileOpActions[testIter]; //Grab item
         writeUnicodeToFile(fileOpActionFile, currentReadLine); //Write it
     }
-
+    for (int testIter = 0; testIter < duplicateFiles.size(); ++testIter)
+    {
+        currentReadLine = duplicateFiles[testIter]; //Grab item
+        writeUnicodeToFile(duplicateFileStream, currentReadLine); //Write it
+    }
 
     std::chrono::time_point end = std::chrono::steady_clock::now(); // Stop the clock!
     std::cout << "FINISHED! - " << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count() << std::endl; //Display clock results.
 
-
+    system("PAUSE");
     return 0;
 }
 
@@ -253,7 +275,7 @@ void assignHashTasks(std::vector<std::wstring>& givenDB, std::wstring givenStart
 
         filePath = currentReadLine.substr(0, nthOccurrence(currentReadLine, delimitingCharacter, 1)); //Get file path.
 
-        hashingThreadPool.push_task(MThashGivenFile, filePath, std::ref(givenDB), iterator); //Assigning task.
+        hashingThreadPool.push_task(MThashGivenFile, filePath, std::ref(givenDB), std::to_wstring(iterator)); //Assigning task.
     }
 }
 
@@ -287,7 +309,6 @@ std::string convertMD5ToHex(unsigned char* givenDigest)
 
     return outputHexString; //Output hash
 }
-
 
 //Creates a list of all files and directories within a given directory. Places each entry in a delimited format into the given wstring vector.
 void createDirectoryMapDB(std::vector<std::wstring>& givenVectorDB, std::wstring givenStartPath)
@@ -391,9 +412,11 @@ void MThashGivenFile(std::wstring givenFilePath, std::vector<std::wstring>& give
 
     //Close file.
     fileHandle.close();
+    std::cout << convertMD5ToHex(digest) << std::endl;
+    //system("PAUSE");
     
     //Write the result to the vector.
-    givenVector[_wtoi(lineLocation.c_str())].insert(nthOccurrence(givenVector[_wtoi(lineLocation.c_str())], delimitingCharacter, 1) + 1, stringToWString(convertMD5ToHex(digest)));
+    givenVector[_wtoi(lineLocation.c_str())].insert(nthOccurrence(givenVector[_wtoi(lineLocation.c_str())], delimitingCharacter, 1) + 1, stringToWString(convertMD5ToHex(digest)) + newLine);
 }
 
 //returns the position of the nth occurance of a given character. - This could easily be made a string.
@@ -415,12 +438,13 @@ size_t nthOccurrence(std::wstring& givenString, std::wstring delimitingCharacter
     return stringPosition;
 }
 
-void compareHashes(std::vector<std::wstring>& givenDB)
+//Compares the hashes and adds them to a vector list.
+void compareHashes(std::vector<std::wstring>& directoryDB, std::vector<std::wstring>& outputDB)
 {
     //Pre-calculating vector size.
-    size_t givenDBSize = givenDB.size();
+    size_t givenDBSize = directoryDB.size();
 
-    size_t lineLocation;
+    //size_t lineLocation;
 
     std::wstring workingHash;
 
@@ -429,45 +453,49 @@ void compareHashes(std::vector<std::wstring>& givenDB)
     //Multi map will hold the hash and location.
     std::multimap<std::wstring, size_t> DBMap;
 
+    //Stores list of lines within directory DB that have been marked as a duplicate.
+    std::vector<size_t> markedDuplicate;
+
+    //std::wcout << directoryDB[iterator] << std::endl;
+
+    std::wstring currentReadLine; //Stores line for easy manipulating.
+
     //Iterate through givenDB and populate DBMap.
     for (size_t iterator = 0; iterator < givenDBSize; ++iterator)
-        DBMap.insert(std::make_pair(givenDB[iterator].substr(nthOccurrence(givenDB[iterator], delimitingCharacter, 1), std::wstring::npos - newLine.length()), iterator));
+    {
+        currentReadLine = directoryDB[iterator]; //Reading line.
+
+        currentReadLine.erase(std::remove(currentReadLine.begin(), currentReadLine.end(), '\n'), currentReadLine.end()); //Removing newline from the end.
+
+        DBMap.insert(std::make_pair(currentReadLine.substr(nthOccurrence(currentReadLine, delimitingCharacter, 1) + 1, std::wstring::npos), iterator));
+    }
+        
+
 
     //Iterate through givenDB. Get Hash value. Look for it in DBMap.
     for (size_t iterator = 0; iterator < givenDBSize; ++iterator)
     {
-        //Get hash value.
-        workingHash = givenDB[iterator].substr(nthOccurrence(givenDB[iterator], delimitingCharacter, 1), std::wstring::npos - newLine.length());
+        currentReadLine = directoryDB[iterator]; //Reading line.
+
+        currentReadLine.erase(std::remove(currentReadLine.begin(), currentReadLine.end(), '\n'), currentReadLine.end()); //Removing newline from the end.
+
+        workingHash = currentReadLine.substr(nthOccurrence(currentReadLine, delimitingCharacter, 1) + 1, std::wstring::npos); //Get hash value.
 
         //Look for hash in DBMap.
-        if (DBMap.count(workingHash) > 1) //Multiple values found associated to this key (the hash).
+        if (workingHash != L"" && DBMap.count(workingHash) > 1) //Multiple values found associated to this key (the hash).
         {
-
-            //Write initial value
-            threadPool.push_task(writeToOutput, L"DUPLICATE" + delimitingCharacter);
-
             //Create iterator.
             resultRange = DBMap.equal_range(workingHash);
 
-            //Iterate through values.
+            //Iterate through matching values and write them to the output vector.
             for (std::multimap<std::wstring, size_t>::iterator mmIterator = resultRange.first; mmIterator != resultRange.second; ++mmIterator)
             {
-                //Write paths.
-                threadPool.push_task(writeToOutput, delimitingCharacter + resultRange.second);
+                outputDB.push_back(directoryDB[mmIterator->second].substr(0, nthOccurrence(directoryDB[mmIterator->second], delimitingCharacter, 1)) + delimitingCharacter + workingHash + newLine); //Write resulting values (paths).
+                DBMap.erase(mmIterator); //Erase the value from the map, so that it can't be found again.
             }
-
-            //threadPool.push_task(writeToOutput, givenDB[iterator] + );
-
-            //Write new line.
-
         }
     }
-
-
-
-
 }
-
 
 //Performs "filesystem::remove_all" on given path.
 void removeObject(std::wstring destinationFilePath, bool recursiveRemoval)

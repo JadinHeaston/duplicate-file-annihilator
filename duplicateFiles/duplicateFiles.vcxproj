@@ -114,7 +114,7 @@
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <AdditionalIncludeDirectories>C:\Program Files\ADDITIONAL VISUAL STUDIOS LIBRARIES\OpenSSL\include64</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp17</LanguageStandard>
@@ -124,6 +124,7 @@
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalLibraryDirectories>C:\Program Files\ADDITIONAL VISUAL STUDIOS LIBRARIES\OpenSSL\lib64</AdditionalLibraryDirectories>
+      <AdditionalDependencies>"C:\Program Files\ADDITIONAL VISUAL STUDIOS LIBRARIES\OpenSSL\lib64\libsslMT.lib";"C:\Program Files\ADDITIONAL VISUAL STUDIOS LIBRARIES\OpenSSL\lib64\libcryptoMT.lib";"C:\Program Files\ADDITIONAL VISUAL STUDIOS LIBRARIES\OpenSSL\lib64\libcryptoMD.lib";%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -132,7 +133,7 @@
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp17</LanguageStandard>
       <LanguageStandard_C>stdc17</LanguageStandard_C>
@@ -144,6 +145,7 @@
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalLibraryDirectories>C:\Program Files\ADDITIONAL VISUAL STUDIOS LIBRARIES\OpenSSL\lib64;C:\Program Files\ADDITIONAL VISUAL STUDIOS LIBRARIES\boost\boost_1_78_0\stage\lib;C:\Program Files\ADDITIONAL VISUAL STUDIOS LIBRARIES\boost\boost_1_78_0\lib64-msvc-14.2</AdditionalLibraryDirectories>
+      <AdditionalDependencies>"C:\Program Files\ADDITIONAL VISUAL STUDIOS LIBRARIES\OpenSSL\lib64\libsslMT.lib";"C:\Program Files\ADDITIONAL VISUAL STUDIOS LIBRARIES\OpenSSL\lib64\libcryptoMT.lib";"C:\Program Files\ADDITIONAL VISUAL STUDIOS LIBRARIES\OpenSSL\lib64\libcryptoMD.lib";%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
