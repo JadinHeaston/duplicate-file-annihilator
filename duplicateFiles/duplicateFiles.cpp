@@ -45,6 +45,9 @@ size_t deletedFileCount = 0;
 size_t duplicateFileCount = 0;
 size_t uniqueFileCount = 0;
 
+//Holds an array of single letter arguments that need to be applied.
+std::unordered_map<char, int> singleCharArguments;
+
 
 //FUNCTION PROTOTYPES
 void assignHashTasks(std::vector<std::wstring>& givenDB, std::wstring givenStartPath);
@@ -71,84 +74,94 @@ int main(int argc, char* argv[])
     //Verifying that no \ escaped " exist in the path string.
     for (int i = 0; i < argc; i++)
     {
-        std::size_t found = std::string(argv[i]).find("\"");
+        std::size_t found = std::string(argv[i]).find("\""); //Search for a quotation mark.
+
         if (found != std::string::npos)
         {
-            std::cout << "ERROR: Rogue quote found. Likely due to a \"\\\" placed before a double quote (\"). Please double check your input and try again." << std::endl;
+            std::cout << "ERROR: Rogue quote found. Likely due to a \"\\\" placed before a double quote (\"). Please double check your input and try again. I recommend using forward slashes '/' to avoid this issue." << std::endl;
             system("PAUSE");
             return 0;
         }
     }
 
-    //Reading args
+    //Checking that an argument was given.
     if (argc == 1) //No arguments provided. Notify. Close program.
     {
-        std::cout << "No arguments provided.\nUse the \"-h\" or \"--help\" switch to show the available options.\n(-s is required for operation)" << std::endl;
+        std::cout << "No arguments provided.\nUse the \"-h\" for a short help message or the \"--help\" to show the full help documentation.\n" << std::endl;
         system("PAUSE");
         return 0;
-    }
-    else if (argc == 2) //Checking for help message.
-    {
-        if (strncmp(argv[1], "-h", 3) == 0 || strcmp(argv[1], "--help") == 0) //Checking second argument for if it is "-h" or "-help".
-        {
-            //Display help
-            std::cout << "Defaults:" << std::endl;
-            std::cout << "--output-verbose-debug <FILEPATH> - NULL | --no-recursive - T" << std::endl;
-            std::cout << "HELP PROVIDED. GET FUCKED" << std::endl;
-
-            system("PAUSE");
-            return 0;
-        }
-        else //No arguments provided. Notify. Close program.
-        {
-            std::cout << "Use the \"-h\" or \"--help\" switch to show the available options.\n(-s is required for operation)" << std::endl;
-            system("PAUSE");
-            return 0;
-        }
     }
 
     for (int i = 0; i < argc; i++) // Cycle through all arguments.
     {
-        if (strncmp(argv[i], "-s", 2) == 0) //Source path switch.
+        //Check if the argument contains a single or double slash
+        if (strncmp(argv[i], "--", 2) == 0) //Check for double slash
         {
-            givenDirectoryPath = formatFilePath(charToWString(argv[i + 1]));
-
-            if (givenDirectoryPath.back() == L'\\')
-                givenDirectoryPath.pop_back(); //Remove the slash.
-
-            if (!std::filesystem::is_directory(givenDirectoryPath)) //Verify path is real and valid.
+            if (strncmp(argv[i], "--directory", 32) == 0) //Give the directory path to check for duplicate files.
             {
-                std::wcout << "-s path provided was NOT found. (" << givenDirectoryPath << ")" << std::endl;
-                system("PAUSE");
-                return 0;
+                givenDirectoryPath = formatFilePath(charToWString(argv[i + 1]));
+
+                if (givenDirectoryPath.back() == L'\\')
+                    givenDirectoryPath.pop_back(); //Remove the slash.
+
+                if (!std::filesystem::is_directory(givenDirectoryPath)) //Verify path is real and valid.
+                {
+                    std::wcout << "The provided --directory path provided was NOT found, or is not a directory. (" << givenDirectoryPath << ")" << std::endl;
+                    system("PAUSE");
+                    return 0;
+                }
+            }
+            else if (strncmp(argv[i], "--no-recursive", 32) == 0) //Disable recursive operation.
+                recursiveSearch = false;
+            else if (strncmp(argv[i], "--output-file", 32) == 0) //Disable recursive operation.
+            {
+                std::wstring debugFilePath = formatFilePath(charToWString(argv[i + 1])); //Get next argument.
+                if (outputFilePath.find(L"/")) //Search for a slash to determine if the given text is a full path or a name. If a slash is found, it is a path.
+                {
+                    //Checking that a file name exists. Continuing with default name appended to the given path if it doesn't.
+                    if (outputFilePath.substr(outputFilePath.find_last_of(L"/") + 1, std::wstring::npos) != L"")
+                    {
+                        outputFileName = outputFilePath.substr(outputFilePath.find_last_of(L"/") + 1, std::wstring::npos);
+                        outputFilePath = outputFilePath.substr(0, outputFilePath.find_last_of(L"/") + 1); //Extract filename from path.
+                    }
+                }
+                else //If there is no slash, then a name was given.
+                {
+                    outputFileName = outputFilePath; //Set the given item to be the name.
+                    outputFilePath = L""; //Set the path to nothing. The name will be appended to this and cause the file to be created in the same location as the running application.
+                }
+
+                //Verify file can be opened.
+                outputFile.open(outputFilePath + outputFileName, std::ios::out | std::ios::binary | std::ios::app); //Open the file.
+                if (!outputFile.is_open())
+                {
+                    std::wcout << L"Output file path not usable: " + outputFilePath + outputFileName << std::endl;
+                    system("PAUSE");
+                    return 0;
+                }
+                outputFile.close();
+
             }
         }
-        else if (strncmp(argv[i], "--no-recursive", 32) == 0) //Disable recursive operation.
-            recursiveSearch = false;
+        else //Must be single dash.
+        {
+            for (int iterator = 1; iterator < sizeof(argv[i]); ++iterator) //Iterating through all characters, after the slash. (Starting at 1 to skip the initial dash)
+                singleCharArguments[argv[i][iterator]] = 1;
+        }
     }
 
-    //***** NEEDS COMMENTING
-    if (outputFilePath.find(L"/"))
+    //Iterating through argument array and applying arguments.
+    for (size_t iterator = 0; iterator < sizeof(singleCharArguments); ++iterator)
     {
-        outputFileName = outputFilePath.substr(outputFilePath.find_last_of(L"/") + 1, std::wstring::npos);
-
-        outputFilePath = outputFilePath.substr(0, outputFilePath.find_last_of(L"/") + 1); //Remove filename from path.
+        if (singleCharArguments['h']) //Short help message.
+        {
+            //Display help message.
+            std::cout << "SHORT HELP MESSAGE :)" << std::endl;
+            system("PAUSE");
+            return 0;
+        }
     }
-    else
-    {
-        outputFileName = outputFilePath;
-        outputFilePath = L"";
-    }
-
-    //outputFile.open(outputFilePath + outputFileName, std::ios::out | std::ios::binary | std::ios::app); //Open the file.
-    //if (!outputFile.is_open())
-    //{
-    //    std::wcout << L"Debug file path not usable: " + outputFilePath + outputFileName << std::endl;
-    //    system("PAUSE");
-    //    return 0;
-    //}
-    //outputFile.close();
-
+    
 	//Creating vectors to hold directory maps.
 	std::vector<std::wstring> directoryDB;
     //File action vector
@@ -158,13 +171,13 @@ int main(int argc, char* argv[])
 
     //MAX_PATH bypass.
     //Also ensuring that path is an absolute path.
-    givenDirectoryPath = formatFilePath(L"//?/" + std::filesystem::absolute(givenDirectoryPath).wstring());
+    givenDirectoryPath = formatFilePath(L"\\\\?\\" + std::filesystem::absolute(givenDirectoryPath).wstring());
    
 
     //Double check that there is no slash.
     //This was added because running a drive letter ("D:") through absolute adds one.
 
-    if (givenDirectoryPath.back() == L'/')
+    if (givenDirectoryPath.back() == L'/' || givenDirectoryPath.back() == L'\\')
         givenDirectoryPath.pop_back(); //Remove the slash.
 
     //Creating directory map.
@@ -199,22 +212,17 @@ int main(int argc, char* argv[])
     }
     
 
-    //Output database of matches.
-
-
-
+    //Add headers to duplicate file list.
     std::wstring columnsLine = L"FILE_PATH" + delimitingCharacter + L"MD5_HASH" + newLine;
     duplicateFiles.push_back(columnsLine);
-    std::rotate(duplicateFiles.rbegin(), duplicateFiles.rbegin() + 1, duplicateFiles.rend());
+    std::rotate(duplicateFiles.rbegin(), duplicateFiles.rbegin() + 1, duplicateFiles.rend()); //Rotate all elements to the right, to allow the header and path information to be at the top/start.
     
 
     
     //Add headers to directory file.
     columnsLine = L"PATH" + delimitingCharacter + L"MD5_HASH" + newLine;
-
     directoryDB.push_back(columnsLine); //Adding header.
-    //Rotate all elements to the right two, to allow the header and path information to be at the top/start.
-    std::rotate(directoryDB.rbegin(), directoryDB.rbegin() + 1, directoryDB.rend());
+    std::rotate(directoryDB.rbegin(), directoryDB.rbegin() + 1, directoryDB.rend()); //Rotate all elements to the right, to allow the header and path information to be at the top/start.
 
 
     //Holds output of hashAction reading, allows for manipulation.
@@ -367,15 +375,29 @@ void createDirectoryMapDB(std::vector<std::wstring>& givenVectorDB, std::wstring
 
 }
 
-//Takes a string and removes "\\" and places "/".
+//Uniformly sets directory separators.
 std::wstring formatFilePath(std::wstring givenString)
 {
-    //Formating givenFile to have the slashes ALL be / instead of mixed with \.
-    for (int i = 0; i < (int)givenString.length(); ++i)
+    if (givenString.find(L"\\\\?\\") != std::wstring::npos) //If the windows max_path bypass is in the path, then all separators must be backslashes.
     {
-        if (givenString[i] == '\\')
-            givenString[i] = '/';
+        //Formating givenFile to have the slashes ALL be \.
+        for (int i = 0; i < (int)givenString.length(); ++i)
+        {
+            if (givenString[i] == '/')
+                givenString[i] = '\\';
+        }
     }
+    else
+    {
+        //Formating givenFile to have the slashes ALL be /.
+        for (int i = 0; i < (int)givenString.length(); ++i)
+        {
+            if (givenString[i] == '\\')
+                givenString[i] = '/';
+        }
+    }
+
+
     return givenString;
 }
 
