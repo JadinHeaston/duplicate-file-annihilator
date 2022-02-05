@@ -1,0 +1,15 @@
+☐ Rework arguments
+     Steal work from Sync Application (https://github.com/JadinHeaston/sync-application)
+     Argument work has been completed on Sync Application. Steal the code!
+☐ Create deleting file function.
+     Allow the user to edit a file and then read that file and perform the actions remaining.
+          This needs to tell the user what files are the same, which one is being kept, and which is removed.
+          The "KEEP" file will have no action attached to it. It is only there for the user to know.
+          Other files will have a "DELETE" action. If the file is removed from the list, it will not be deleted.
+               This also allows the "KEEP" file to be changed to "DELETE".
+     Determine which file should be deleted. Is random good enough?
+          I think so.
+          
+☐ Allow for other hashing function(s)
+     MD5 is probably the best to use, but having the option for something like SHA-512 would be nice.
+✔ Fixed formatFilePath function. @done (2/5/2022, 6:53:48 AM)
